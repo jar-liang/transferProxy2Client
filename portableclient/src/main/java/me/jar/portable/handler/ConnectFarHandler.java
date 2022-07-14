@@ -49,8 +49,8 @@ public class ConnectFarHandler extends ChannelInboundHandlerAdapter {
                         @Override
                         protected void initChannel(SocketChannel ch) {
                             ChannelPipeline pipeline = ch.pipeline();
-                            pipeline.addLast("decrypt", new DecryptHandler());
-                            pipeline.addLast("encrypt", new EncryptHandler());
+//                            pipeline.addLast("decrypt", new DecryptHandler());
+//                            pipeline.addLast("encrypt", new EncryptHandler());
                             pipeline.addLast("receiveFar", new ReceiveFarHandler(ctx.channel()));
                         }
                     });
