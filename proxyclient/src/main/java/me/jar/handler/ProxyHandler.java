@@ -143,7 +143,7 @@ public class ProxyHandler extends CommonHandler {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        LOGGER.error("===client agent has caught exception, cause: {}", cause.getMessage());
+        LOGGER.error("===client agent has caught exception, cause: " +  cause.getMessage());
         ctx.close();
     }
 }

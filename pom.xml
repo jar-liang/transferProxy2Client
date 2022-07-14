@@ -15,6 +15,7 @@
     <module>common</module>
     <module>proxyclient</module>
     <module>proxyserver</module>
+    <module>portableclient</module>
   </modules>
 
   <properties>

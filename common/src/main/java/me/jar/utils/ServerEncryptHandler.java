@@ -15,12 +15,12 @@ import java.security.GeneralSecurityException;
  * @Description
  * @Date 2021/4/23-19:59
  */
-public class EncryptHandler extends MessageToByteEncoder<ByteBuf> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(EncryptHandler.class);
+public class ServerEncryptHandler extends MessageToByteEncoder<byte[]> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ServerEncryptHandler.class);
 
     private String password;
 
-    public EncryptHandler() {
+    public ServerEncryptHandler() {
         String password = ProxyConstants.PROPERTY.get(ProxyConstants.PROPERTY_NAME_KEY);
         if (password == null || password.length() == 0) {
             throw new IllegalArgumentException("Illegal key from property");
@@ -29,12 +29,10 @@ public class EncryptHandler extends MessageToByteEncoder<ByteBuf> {
     }
 
     @Override
-    protected void encode(ChannelHandlerContext ctx, ByteBuf msg, ByteBuf out) {
-        System.out.println("开始加密");
-        byte[] sourceBytes = new byte[msg.readableBytes()];
-        msg.readBytes(sourceBytes);
+    protected void encode(ChannelHandlerContext ctx, byte[] msg, ByteBuf out) {
+        System.out.println("服务端开始加密...");
         try {
-            byte[] encrypt = AESUtil.encrypt(sourceBytes, password);
+            byte[] encrypt = AESUtil.encrypt(msg, password);
             // fix: 添加特定标识字节，防止解密端不停解密导致CPU占用过高
             ByteBuf wrappedBuffer = Unpooled.wrappedBuffer(encrypt, ProxyConstants.MARK_BYTE);
             out.writeInt(wrappedBuffer.readableBytes());

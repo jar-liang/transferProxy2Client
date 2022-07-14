@@ -18,13 +18,13 @@ import java.util.List;
  * @Description
  * @Date 2021/4/23-20:07
  */
-public class DecryptHandler extends ReplayingDecoder<DecryptDecoderState> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DecryptHandler.class);
+public class ServerDecryptHandler extends ReplayingDecoder<DecryptDecoderState> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ServerDecryptHandler.class);
 
     private String password;
     private int length;
 
-    public DecryptHandler() {
+    public ServerDecryptHandler() {
         super(DecryptDecoderState.READ_LENGTH);
         String password = ProxyConstants.PROPERTY.get(ProxyConstants.PROPERTY_NAME_KEY);
         if (password == null || password.length() == 0) {
@@ -35,7 +35,7 @@ public class DecryptHandler extends ReplayingDecoder<DecryptDecoderState> {
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
-        System.out.println("开始解密...");
+        System.out.println("服务端开始解密...");
         switch (state()) {
             case READ_LENGTH:
                 length = in.readInt();
@@ -59,7 +59,7 @@ public class DecryptHandler extends ReplayingDecoder<DecryptDecoderState> {
                     byteBuf.readBytes(encryptSource, 0, readableBytes - 4);
                     try {
                         byte[] decryptBytes = AESUtil.decrypt(encryptSource, password);
-                        out.add(Unpooled.wrappedBuffer(decryptBytes));
+                        out.add(decryptBytes);
                     } catch (GeneralSecurityException | UnsupportedEncodingException e) {
                         LOGGER.error("===Decrypt data failed. detail: {}", e.getMessage());
                         ctx.close();

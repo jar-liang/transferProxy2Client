@@ -28,6 +28,7 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
+        System.out.println("读取到目标返回的数据...");
         if (msg instanceof byte[]) {
             byte[] bytes = (byte[]) msg;
             Map<String, Object> metaData = new HashMap<>(1);
