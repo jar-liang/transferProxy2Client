@@ -141,9 +141,9 @@ public class ConnectProxyHandler extends CommonHandler {
                         ChannelPipeline pipeline = ch.pipeline();
                         // 添加与客户端交互的handler
 //                        pipeline.addLast("decrypt", new DecryptHandler());
-                        pipeline.addLast("byteArrayEncoder", new ByteArrayEncoder());
+//                        pipeline.addLast("byteArrayEncoder", new ByteArrayEncoder());
 //                        pipeline.addLast("decrypt", new ServerDecryptHandler());
-//                        pipeline.addLast("encrypt", new ServerEncryptHandler());
+                        pipeline.addLast("encrypt", new ServerEncryptHandler());
                         pipeline.addLast("byteArrayDecoder", new ByteArrayDecoder());
                         pipeline.addLast("connectClient", new ConnectClientHandler(channel));
                         CHANNELS.add(ch);
