@@ -1,7 +1,6 @@
 package me.jar.utils;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 import me.jar.constants.ProxyConstants;
@@ -33,10 +32,8 @@ public class ServerEncryptHandler extends MessageToByteEncoder<byte[]> {
         System.out.println("服务端开始加密...");
         try {
             byte[] encrypt = AESUtil.encrypt(msg, password);
-            // fix: 添加特定标识字节，防止解密端不停解密导致CPU占用过高
-            ByteBuf wrappedBuffer = Unpooled.wrappedBuffer(encrypt, ProxyConstants.MARK_BYTE);
-            out.writeInt(wrappedBuffer.readableBytes());
-            out.writeBytes(wrappedBuffer);
+            byte[] data = BuildDataUtil.buildLengthAndMarkWithData(encrypt);
+            out.writeBytes(data);
         } catch (GeneralSecurityException | UnsupportedEncodingException e) {
             LOGGER.error("===Decrypt data failed. detail: {}", e.getMessage());
             ctx.close();
