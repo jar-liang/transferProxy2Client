@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.util.Arrays;
 
 /**
  * @Description
@@ -30,15 +31,14 @@ public class EncryptHandler extends MessageToByteEncoder<ByteBuf> {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, ByteBuf msg, ByteBuf out) {
-        System.out.println("开始加密");
         byte[] sourceBytes = new byte[msg.readableBytes()];
         msg.readBytes(sourceBytes);
+        System.out.println("开始加密");
         try {
             byte[] encrypt = AESUtil.encrypt(sourceBytes, password);
             // fix: 添加特定标识字节，防止解密端不停解密导致CPU占用过高
-            ByteBuf wrappedBuffer = Unpooled.wrappedBuffer(encrypt, ProxyConstants.MARK_BYTE);
-            out.writeInt(wrappedBuffer.readableBytes());
-            out.writeBytes(wrappedBuffer);
+            byte[] data = BuildDataUtil.buildLengthAndMarkWithData(encrypt);
+            out.writeBytes(data);
         } catch (GeneralSecurityException | UnsupportedEncodingException e) {
             LOGGER.error("===Decrypt data failed. detail: {}", e.getMessage());
             ctx.close();

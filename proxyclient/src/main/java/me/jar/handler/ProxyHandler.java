@@ -1,6 +1,7 @@
 package me.jar.handler;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -11,10 +12,14 @@ import me.jar.constants.ProxyConstants;
 import me.jar.constants.TransferMsgType;
 import me.jar.exception.TransferProxyException;
 import me.jar.message.TransferMsg;
+import me.jar.utils.AESUtil;
 import me.jar.utils.CommonHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,6 +31,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ProxyHandler extends CommonHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProxyHandler.class);
     private static final Map<String, Channel> CHANNEL_MAP = new ConcurrentHashMap<>();
+    private String password;
+
+    public ProxyHandler() {
+        String password = ProxyConstants.PROPERTY.get(ProxyConstants.PROPERTY_NAME_KEY);
+        if (password == null || password.length() == 0) {
+            throw new IllegalArgumentException("Illegal key from property");
+        }
+        this.password = password;
+    }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -55,10 +69,31 @@ public class ProxyHandler extends CommonHandler {
                     break;
                 case DATA:
                     Channel channelData = CHANNEL_MAP.get(channelId);
-                    if (channelData == null || !channelData.isActive()) {
-                        connectTarget(ctx, transferMsg.getDate(), metaData);
-                    } else {
-                        channelData.writeAndFlush(transferMsg.getDate());
+                    byte[] transferMsgDate = transferMsg.getDate();
+                    if (transferMsgDate.length < ProxyConstants.MARK_BYTE.length) {
+                        LOGGER.error("Get data length error! data length: " + transferMsgDate.length + ", less than mark bytes length: " + ProxyConstants.MARK_BYTE.length);
+                        ctx.close();
+                        break;
+                    }
+                    for (int i = 0; i < ProxyConstants.MARK_BYTE.length; i++) {
+                        if (transferMsgDate[transferMsgDate.length - ProxyConstants.MARK_BYTE.length + i] != ProxyConstants.MARK_BYTE[i]) {
+                            LOGGER.info("===Illegal data from ip: {}", ctx.channel().remoteAddress());
+                            ctx.close();
+                            return;
+                        }
+                    }
+                    byte[] encryptSource = new byte[transferMsgDate.length - ProxyConstants.MARK_BYTE.length];
+                    System.arraycopy(transferMsgDate, 0, encryptSource, 0, encryptSource.length);
+                    try {
+                        byte[] decryptBytes = AESUtil.decrypt(encryptSource, password);
+                        if (channelData == null || !channelData.isActive()) {
+                            connectTarget(ctx, decryptBytes, metaData);
+                        } else {
+                            channelData.writeAndFlush(decryptBytes);
+                        }
+                    } catch (GeneralSecurityException | UnsupportedEncodingException e) {
+                        LOGGER.error("===Decrypt data failed. detail: {}", e.getMessage());
+                        ctx.close();
                     }
                     break;
                 case KEEPALIVE:

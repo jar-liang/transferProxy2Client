@@ -16,6 +16,8 @@ import me.jar.constants.TransferMsgType;
 import me.jar.exception.TransferProxyException;
 import me.jar.message.TransferMsg;
 import me.jar.utils.CommonHandler;
+import me.jar.utils.DecryptHandler;
+import me.jar.utils.LengthContentDecoder;
 import me.jar.utils.PlatformUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +60,6 @@ public class ConnectProxyHandler extends CommonHandler {
                         break;
                     case DATA:
                         // 传输数据
-                        System.out.println("得到客户agent返回的数据， 发回给终端...");
                         CHANNELS.writeAndFlush(transferMsg.getDate(), channelItem -> channelItem.id().asLongText().equals(transferMsg.getMetaData().get(ProxyConstants.CHANNEL_ID)));
                         break;
                     case KEEPALIVE:
@@ -141,6 +142,7 @@ public class ConnectProxyHandler extends CommonHandler {
                     protected void initChannel(SocketChannel ch) {
                         ChannelPipeline pipeline = ch.pipeline();
                         // 添加与客户端交互的handler
+                        pipeline.addLast("lengthField", new LengthContentDecoder());
                         pipeline.addLast("byteArrayEncoder", new ByteArrayEncoder());
                         pipeline.addLast("byteArrayDecoder", new ByteArrayDecoder());
                         pipeline.addLast("connectClient", new ConnectClientHandler(channel));
