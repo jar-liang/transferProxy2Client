@@ -31,7 +31,6 @@ public class ConnectFarHandler extends ChannelInboundHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         // 直连far端，将数据发送过去
         if (farChannel != null && farChannel.isActive()) {
-            System.out.println("已连接到server，继续发送数据给server");
             farChannel.writeAndFlush(msg);
         } else {
             if (!ProxyConstants.PROPERTY.containsKey(ProxyConstants.FAR_SERVER_IP) || !ProxyConstants.PROPERTY.containsKey(ProxyConstants.KEY_NAME_PORT)) {
@@ -59,8 +58,6 @@ public class ConnectFarHandler extends ChannelInboundHandlerAdapter {
             bootstrap.connect(host, port)
                     .addListener((ChannelFutureListener) connectFuture -> {
                         if (connectFuture.isSuccess()) {
-                            System.out.println("连接到server并发送数据...");
-                            LOGGER.debug(">>>Connect far server successfully.");
                             farChannel = connectFuture.channel();
                             farChannel.writeAndFlush(msg);
                         } else {

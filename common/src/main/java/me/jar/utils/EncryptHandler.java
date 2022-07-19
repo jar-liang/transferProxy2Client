@@ -33,7 +33,6 @@ public class EncryptHandler extends MessageToByteEncoder<ByteBuf> {
     protected void encode(ChannelHandlerContext ctx, ByteBuf msg, ByteBuf out) {
         byte[] sourceBytes = new byte[msg.readableBytes()];
         msg.readBytes(sourceBytes);
-        System.out.println("开始加密");
         try {
             byte[] encrypt = AESUtil.encrypt(sourceBytes, password);
             // fix: 添加特定标识字节，防止解密端不停解密导致CPU占用过高

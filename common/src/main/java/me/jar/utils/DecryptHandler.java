@@ -35,7 +35,6 @@ public class DecryptHandler extends ReplayingDecoder<DecryptDecoderState> {
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
-        System.out.println("开始解密...");
         switch (state()) {
             case READ_LENGTH:
                 length = in.readInt();

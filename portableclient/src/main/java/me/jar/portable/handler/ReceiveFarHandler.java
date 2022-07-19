@@ -23,7 +23,6 @@ public class ReceiveFarHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        System.out.println("读到server返回的数据...");
         if (clientChannel.isActive()) {
             clientChannel.writeAndFlush(msg);
         } else {
