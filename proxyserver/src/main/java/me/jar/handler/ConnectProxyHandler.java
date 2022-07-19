@@ -15,7 +15,8 @@ import me.jar.constants.ProxyConstants;
 import me.jar.constants.TransferMsgType;
 import me.jar.exception.TransferProxyException;
 import me.jar.message.TransferMsg;
-import me.jar.utils.*;
+import me.jar.utils.CommonHandler;
+import me.jar.utils.PlatformUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -140,10 +141,7 @@ public class ConnectProxyHandler extends CommonHandler {
                     protected void initChannel(SocketChannel ch) {
                         ChannelPipeline pipeline = ch.pipeline();
                         // 添加与客户端交互的handler
-//                        pipeline.addLast("decrypt", new DecryptHandler());
-//                        pipeline.addLast("byteArrayEncoder", new ByteArrayEncoder());
-//                        pipeline.addLast("decrypt", new ServerDecryptHandler());
-                        pipeline.addLast("encrypt", new ServerEncryptHandler());
+                        pipeline.addLast("byteArrayEncoder", new ByteArrayEncoder());
                         pipeline.addLast("byteArrayDecoder", new ByteArrayDecoder());
                         pipeline.addLast("connectClient", new ConnectClientHandler(channel));
                         CHANNELS.add(ch);
