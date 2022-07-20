@@ -21,6 +21,19 @@ public class LengthContentDecoder extends ReplayingDecoder<DecodeState> {
         switch (state()) {
             case LENGTH:
                 length = in.readInt();
+                if (length < 0 || length > 104857600) {
+                    LOGGER.error("LengthContentDecoder decode failed, length is illegal! length: " + length);
+                    int discard = length - in.readableBytes();
+                    if (discard < 0) {
+                        // buffer contains more bytes then the frameLength so we can discard all now
+                        in.skipBytes(length);
+                    } else {
+                        // Enter the discard mode and discard everything received so far.
+                        in.skipBytes(in.readableBytes());
+                    }
+                    ctx.close();
+                    return;
+                }
                 checkpoint(DecodeState.CONTENT);
             case CONTENT:
                 ByteBuf byteBuf = in.readBytes(length);
