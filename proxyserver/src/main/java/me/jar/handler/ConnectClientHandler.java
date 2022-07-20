@@ -29,6 +29,14 @@ public class ConnectClientHandler extends ChannelInboundHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof byte[]) {
             byte[] bytes = (byte[]) msg;
+            int markByteIndex = bytes.length - ProxyConstants.MARK_BYTE.length;
+            for (int i = 0; i < ProxyConstants.MARK_BYTE.length; i++) {
+                if (bytes[markByteIndex + i] != ProxyConstants.MARK_BYTE[i]) {
+                    LOGGER.info("===Illegal data from ip: {}", ctx.channel().remoteAddress());
+                    ctx.close();
+                    return;
+                }
+            }
             TransferMsg transferMsg = new TransferMsg();
             transferMsg.setType(TransferMsgType.DATA);
             Map<String, Object> metaData = new HashMap<>(1);
