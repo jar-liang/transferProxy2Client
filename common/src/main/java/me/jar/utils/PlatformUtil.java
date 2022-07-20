@@ -31,14 +31,57 @@ public final class PlatformUtil {
         Map<String, String> propertyMap = new HashMap<>(20);
         String propertyFileName;
         if (PLATFORM_CODE == ProxyConstants.WIN_OS) {
-            propertyFileName = ProxyConstants.PROPERTY_NAME_WIN;
+            propertyFileName = ProxyConstants.BASE_PATH_WIN + "property.txt";
         } else if (PLATFORM_CODE == ProxyConstants.LINUX_OS) {
-            propertyFileName = ProxyConstants.PROPERTY_NAME_LINUX;
+            propertyFileName = ProxyConstants.BASE_PATH_LINUX + "property.txt";
         } else {
             // 打印日志提示，不支持的系统
             LOGGER.warn("===Unsupported System!");
             return propertyMap;
         }
+        parseProperty2Map(propertyMap, propertyFileName);
+        return propertyMap;
+    }
+
+    public static Map<String, String> getProperty(String index) {
+        Map<String, String> propertyMap = new HashMap<>(20);
+        String propertyFileName;
+        if (PLATFORM_CODE == ProxyConstants.WIN_OS) {
+            propertyFileName = ProxyConstants.BASE_PATH_WIN + "property_" + index + ".txt";
+        } else if (PLATFORM_CODE == ProxyConstants.LINUX_OS) {
+            propertyFileName = ProxyConstants.BASE_PATH_LINUX + "property_" + index + ".txt";
+        } else {
+            // 打印日志提示，不支持的系统
+            LOGGER.warn("===Unsupported System!");
+            return propertyMap;
+        }
+        parseProperty2Map(propertyMap, propertyFileName);
+        return propertyMap;
+    }
+
+    /**
+     * 获取操作系统类型
+     *
+     * @return 整数，1代表Windows，2代表Linux，3代表其它系统
+     */
+    public static int getPlatform() {
+        String osName = System.getProperty("os.name");
+        if (osName == null || osName.length() == 0) {
+            return ProxyConstants.OTHER_OS;
+        }
+        if (osName.contains("Windows")) {
+            LOGGER.info("===Running on Windows.");
+            return ProxyConstants.WIN_OS;
+        } else if (osName.contains("Linux")) {
+            LOGGER.info("===Running on Linux");
+            return ProxyConstants.LINUX_OS;
+        } else {
+            LOGGER.info("===Running on other os, which is {}", osName);
+            return ProxyConstants.OTHER_OS;
+        }
+    }
+
+    private static void parseProperty2Map(Map<String, String> propertyMap, String propertyFileName) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(propertyFileName), CharsetUtil.UTF_8))) {
             while (true) {
                 String line = reader.readLine();
@@ -56,29 +99,6 @@ public final class PlatformUtil {
         } catch (IOException e) {
             // 打印日志提示，读取配置文件失败
             LOGGER.error("===Reading property file failed，please check!", e);
-        }
-        return propertyMap;
-    }
-
-    /**
-     * 获取操作系统类型
-     *
-     * @return 整数，1代表Windows，2代表Linux，3代表其它系统
-     */
-    public static int getPlatform() {
-        String osName = System.getProperty("os.name");
-        if (osName == null || osName.length() == 0) {
-            return ProxyConstants.OTHER_OS;
-        }
-        if (osName.contains("Windows")) {
-            LOGGER.info("===Running on Windows.");
-            return ProxyConstants.WIN_OS;
-        } else if (osName.contains("Linux")){
-            LOGGER.info("===Running on Linux");
-            return ProxyConstants.LINUX_OS;
-        } else {
-            LOGGER.info("===Running on other os, which is {}", osName);
-            return ProxyConstants.OTHER_OS;
         }
     }
 }
