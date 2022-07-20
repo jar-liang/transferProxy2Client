@@ -10,6 +10,7 @@ import me.jar.constants.ProxyConstants;
 import me.jar.handler.ProxyHandler;
 import me.jar.utils.Byte2TransferMsgDecoder;
 import me.jar.utils.LengthContentDecoder;
+import me.jar.utils.PlatformUtil;
 import me.jar.utils.TransferMsg2ByteEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +70,14 @@ public class ClientServer {
     }
 
     public static void main(String[] args) throws InterruptedException {
-       connectProxyServer();
+        if (args.length != 1) {
+            LOGGER.error("Usage: java -jar jarName.jar [index]. index is used to get property file");
+            System.exit(0);
+        }
+
+        ProxyConstants.PROPERTY.clear();
+        ProxyConstants.PROPERTY.putAll(PlatformUtil.getProperty(args[0]));
+
+        connectProxyServer();
     }
 }
