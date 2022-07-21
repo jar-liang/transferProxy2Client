@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -37,6 +38,11 @@ public final class PlatformUtil {
         } else {
             // 打印日志提示，不支持的系统
             LOGGER.warn("===Unsupported System!");
+            return propertyMap;
+        }
+        File file = new File(propertyFileName);
+        if (!file.exists()) {
+            LOGGER.warn("property.txt not exist! if not running on server, it OK");
             return propertyMap;
         }
         parseProperty2Map(propertyMap, propertyFileName);
