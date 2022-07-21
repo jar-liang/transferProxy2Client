@@ -1,0 +1,4 @@
+far.ip=
+server.to.client.port=
+key=
+listenning.port=
