@@ -127,7 +127,6 @@ public class ProxyHandler extends CommonHandler {
             bootstrap.connect(targetIp, targetPortNum).addListener((ChannelFutureListener) connectFuture -> {
                 if (connectFuture.isSuccess()) {
                     connectFuture.channel().writeAndFlush(data);
-                    LOGGER.info(">>>Connect target server and send data successfully. target channel: " + connectFuture.channel().toString());
                 } else {
                     LOGGER.error("===Failed to connect to target server! host: " + targetIp + " , port: " + targetPortNum);
                     sendDisconnectMsgAndRemoveChannel(ctx, channelId);

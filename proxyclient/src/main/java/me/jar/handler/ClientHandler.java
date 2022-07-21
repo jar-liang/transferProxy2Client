@@ -59,7 +59,6 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
-        LOGGER.info("===target channel inactive. channel: " + ctx.channel().toString());
         Map<String, Object> metaData = new HashMap<>(1);
         metaData.put(ProxyConstants.CHANNEL_ID, channelId);
         TransferMsg transferMsg = new TransferMsg();

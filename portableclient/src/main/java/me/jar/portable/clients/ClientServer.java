@@ -5,6 +5,7 @@ import io.netty.channel.socket.SocketChannel;
 import me.jar.constants.ProxyConstants;
 import me.jar.portable.handler.ConnectFarHandler;
 import me.jar.utils.NettyUtil;
+import me.jar.utils.PlatformUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +34,14 @@ public class ClientServer {
     }
 
     public static void main(String[] args) {
+        if (args.length != 1) {
+            LOGGER.error("Usage: java -jar jarName.jar [index]. index is used to get property file");
+            System.exit(0);
+        }
+
+        ProxyConstants.PROPERTY.clear();
+        ProxyConstants.PROPERTY.putAll(PlatformUtil.getProperty(args[0]));
+
         if (ProxyConstants.PROPERTY.containsKey(ProxyConstants.KEY_NAME_PORT)) {
             String port = ProxyConstants.PROPERTY.get(ProxyConstants.KEY_NAME_PORT);
             try {
