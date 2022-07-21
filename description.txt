@@ -1,0 +1,43 @@
+项目简述：
+实现内网穿透，端对端加密传输。
+
+分为三个模块，一个是部署在公网ip的服务器上，用作数据转发，一个是部署在需要访问目标的内网机器上，还有一个是访问端。
+数据路径为 访问端->公网机器->内网端->目标服务。其中访问端会加解密数据，内网端也对应解加密。
+
+配置文件：
+Windows系统目录：  C:\usr\transferProxy2Client 下面
+Linux系统目录： /usr/transferProxy2Client/ 下面
+
+其中
+  property.txt和user.txt是公网端用
+  property_clientAgent.txt是内网端用
+  property_portal.txt是访问端用
+
+property.txt配置内容：
+server.listen.port=xxx          // 公网端监听端口，让内网端连接的端口
+
+user.txt配置内容：
+test|123456789                  // 内网端建立连接需要验证用户名密码，该文件配置可用账号密码，用“|”区分用户名和密码，前面是用户名，后面是密码
+
+property_clientAgent.txt配置内容：
+far.ip=                         // 公网端ip
+far.port=                       // 公网端监听端口，连接该端口
+server.to.client.port=          // 需要公网端开通的让访问端进行连接的端口
+target.ip=                      // 内网目标服务的ip
+target.port=                    // 内网目标服务的端口
+user.name=                      // 连接公网端的用户名
+user.password=                  // 连接公网端的密码
+key=                            // 与访问端进行对称加解密的密钥，长度固定为16位或32位（32位有可能jvm不支持，详情请了解AES加密）
+
+property_portal.txt配置内容：
+far.ip=                         // 公网端ip
+server.to.client.port=          // 公网端开通的让访问端进行连接的端口
+key=                            // 与内网端进行对称加解密的密钥，长度固定为16位或32位（32位有可能jvm不支持，详情请了解AES加密）
+listenning.port=                // 访问端监听端口
+
+注意：配置项的“=”后面要紧跟配置的值，后面也不能有空格与注释
+
+启动
+公网端： java -jar 包名
+内网端： java -jar 包名 内网端配置文件名称中间的部分  // 比如：property_clientAgent.txt，则内网端配置文件名称中间的部分为 clientAgent
+访问端： java -jar 包名 访问端配置文件名称中间的部分  // 比如：property_portal.txt，则内网端配置文件名称中间的部分为 portal
