@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -106,5 +107,43 @@ public final class PlatformUtil {
             // 打印日志提示，读取配置文件失败
             LOGGER.error("===Reading property file failed，please check!", e);
         }
+    }
+
+    public static Map<String, String> parseProperty2Map(URL location) {
+        Map<String, String> propertyMap = new HashMap<>();
+        String path = location.getPath();
+        if (path.contains(".jar")) {
+            String tempPath = null;
+            if (PLATFORM_CODE == ProxyConstants.WIN_OS) {
+                tempPath = path.substring(path.indexOf("/") + 1, path.indexOf(".jar"));
+            } else if (PLATFORM_CODE == ProxyConstants.LINUX_OS) {
+                tempPath = path.substring(path.indexOf("/"), path.indexOf(".jar"));
+            } else {
+                // 打印日志提示，不支持的系统
+                LOGGER.warn("===Unsupported System!");
+            }
+            if (tempPath != null) {
+                String targetDirPath = tempPath.substring(0, tempPath.lastIndexOf("/") + 1);
+                File file = new File(targetDirPath);
+                if (file.exists() && file.isDirectory()) {
+                    File[] properties = file.listFiles(pathname -> pathname.getName().contains("property"));
+                    if (properties == null || properties.length != 1) {
+                        LOGGER.error("jar file directory should be only one property file! please check");
+                    } else {
+                        File property = properties[0];
+                        try {
+                            parseProperty2Map(propertyMap, property.getCanonicalPath());
+                        } catch (IOException e) {
+                            LOGGER.error("get property file path failed! detail: " + e.getMessage());
+                        }
+                    }
+                } else {
+                    LOGGER.error("get jar file directory failed! please check!");
+                }
+            }
+        } else {
+            LOGGER.error("jar file directory has no jar file! please check!");
+        }
+        return propertyMap;
     }
 }

@@ -1,7 +1,11 @@
 package me.jar.clients;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -14,6 +18,9 @@ import me.jar.utils.PlatformUtil;
 import me.jar.utils.TransferMsg2ByteEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.URL;
+import java.util.Map;
 
 
 /**
@@ -70,14 +77,13 @@ public class ClientServer {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        if (args.length != 1) {
-            LOGGER.error("Usage: java -jar jarName.jar [index]. index is used to get property file");
-            System.exit(0);
+        URL location = ClientServer.class.getProtectionDomain().getCodeSource().getLocation();
+        Map<String, String> propertyMap = PlatformUtil.parseProperty2Map(location);
+        if (!propertyMap.isEmpty()) {
+            ProxyConstants.PROPERTY.clear();
+            ProxyConstants.PROPERTY.putAll(propertyMap);
+            connectProxyServer();
         }
-
-        ProxyConstants.PROPERTY.clear();
-        ProxyConstants.PROPERTY.putAll(PlatformUtil.getProperty(args[0]));
-
-        connectProxyServer();
     }
+
 }

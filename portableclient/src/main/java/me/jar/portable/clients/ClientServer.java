@@ -9,6 +9,9 @@ import me.jar.utils.PlatformUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URL;
+import java.util.Map;
+
 
 /**
  * @Description
@@ -34,24 +37,23 @@ public class ClientServer {
     }
 
     public static void main(String[] args) {
-        if (args.length != 1) {
-            LOGGER.error("Usage: java -jar jarName.jar [index]. index is used to get property file");
-            System.exit(0);
-        }
+        URL location = ClientServer.class.getProtectionDomain().getCodeSource().getLocation();
+        Map<String, String> propertyMap = PlatformUtil.parseProperty2Map(location);
+        if (!propertyMap.isEmpty()) {
+            ProxyConstants.PROPERTY.clear();
+            ProxyConstants.PROPERTY.putAll(propertyMap);
 
-        ProxyConstants.PROPERTY.clear();
-        ProxyConstants.PROPERTY.putAll(PlatformUtil.getProperty(args[0]));
-
-        if (ProxyConstants.PROPERTY.containsKey(ProxyConstants.KEY_NAME_PORT)) {
-            String port = ProxyConstants.PROPERTY.get(ProxyConstants.KEY_NAME_PORT);
-            try {
-                int portNum = Integer.parseInt(port.trim());
-                new ClientServer(portNum).run();
-            } catch (NumberFormatException e) {
-                LOGGER.error("===Failed to parse number, property setting may be wrong.", e);
+            if (ProxyConstants.PROPERTY.containsKey(ProxyConstants.KEY_NAME_PORT)) {
+                String port = ProxyConstants.PROPERTY.get(ProxyConstants.KEY_NAME_PORT);
+                try {
+                    int portNum = Integer.parseInt(port.trim());
+                    new ClientServer(portNum).run();
+                } catch (NumberFormatException e) {
+                    LOGGER.error("===Failed to parse number, property setting may be wrong.", e);
+                }
+            } else {
+                LOGGER.error("===Failed to get port from property, starting server failed.");
             }
-        } else {
-            LOGGER.error("===Failed to get port from property, starting server failed.");
         }
     }
 }
