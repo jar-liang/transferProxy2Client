@@ -118,7 +118,7 @@ public class ProxyHandler extends CommonHandler {
                 ChannelPipeline pipeline = ch.pipeline();
                 pipeline.addLast("byteArrayDecoder", new ByteArrayDecoder());
                 pipeline.addLast("byteArrayEncoder", new ByteArrayEncoder());
-                int idleTime = !ProxyConstants.TYPE_TCP.equalsIgnoreCase(proxyType) ? 60 : 10;
+                int idleTime = !ProxyConstants.TYPE_TCP.equalsIgnoreCase(proxyType) ? 15 : 10;
                 pipeline.addLast("idleEvt", new IdleStateHandler(0, 0, idleTime));
                 pipeline.addLast("clientHandler", new ClientHandler(ctx.channel(), channelId, CHANNEL_MAP, idleTime));
                 CHANNEL_MAP.put(channelId, ch);
