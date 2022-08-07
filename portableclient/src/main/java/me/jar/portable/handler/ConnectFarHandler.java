@@ -11,8 +11,6 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.timeout.IdleState;
-import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.ReferenceCountUtil;
 import me.jar.constants.ProxyConstants;
@@ -98,15 +96,4 @@ public class ConnectFarHandler extends ChannelInboundHandlerAdapter {
         ctx.close();
     }
 
-    @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
-        if (evt instanceof IdleStateEvent) {
-            IdleStateEvent event = (IdleStateEvent) evt;
-            if (event.state() == IdleState.ALL_IDLE) {
-                LOGGER.warn("no data read and write more than 10s, close connection");
-                NettyUtil.closeOnFlush(farChannel);
-                ctx.close();
-            }
-        }
-    }
 }

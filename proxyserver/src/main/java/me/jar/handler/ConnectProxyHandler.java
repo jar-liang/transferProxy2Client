@@ -15,7 +15,6 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.bytes.ByteArrayDecoder;
 import io.netty.handler.codec.bytes.ByteArrayEncoder;
-import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.CharsetUtil;
 import me.jar.constants.ProxyConstants;
 import me.jar.constants.TransferMsgType;
@@ -132,7 +131,7 @@ public class ConnectProxyHandler extends CommonHandler {
                         pipeline.addLast("lengthField", new LengthContentDecoder());
                         pipeline.addLast("byteArrayEncoder", new ByteArrayEncoder());
                         pipeline.addLast("byteArrayDecoder", new ByteArrayDecoder());
-                        pipeline.addLast("idleEvt", new IdleStateHandler(0, 0, 10));
+//                        pipeline.addLast("idleEvt", new IdleStateHandler(0, 0, 10));
                         pipeline.addLast("connectClient", new ConnectClientHandler(channel, CHANNEL_MAP));
 //                        CHANNELS.add(ch);
                         CHANNEL_MAP.put(ch.id().asLongText(), ch);

@@ -3,6 +3,8 @@ package me.jar.portable.handler;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.util.ReferenceCountUtil;
 import me.jar.utils.NettyUtil;
 import org.slf4j.Logger;
@@ -44,5 +46,17 @@ public class ReceiveFarHandler extends ChannelInboundHandlerAdapter {
         LOGGER.error("===ReceiveFarHandler caught exception, cause: {}", cause.getMessage() + ". host: " + ctx.channel().remoteAddress().toString());
         NettyUtil.closeOnFlush(clientChannel);
         ctx.close();
+    }
+
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+        if (evt instanceof IdleStateEvent) {
+            IdleStateEvent event = (IdleStateEvent) evt;
+            if (event.state() == IdleState.ALL_IDLE) {
+                LOGGER.warn("no data read and write more than 10s, close connection");
+                NettyUtil.closeOnFlush(clientChannel);
+                ctx.close();
+            }
+        }
     }
 }
