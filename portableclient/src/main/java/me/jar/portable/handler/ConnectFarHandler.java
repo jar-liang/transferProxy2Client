@@ -1,6 +1,7 @@
 package me.jar.portable.handler;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -10,6 +11,9 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.ReferenceCountUtil;
 import me.jar.constants.ProxyConstants;
 import me.jar.utils.DecryptHandler;
@@ -26,12 +30,23 @@ public class ConnectFarHandler extends ChannelInboundHandlerAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectFarHandler.class);
 
     private Channel farChannel;
+    private int lastLength = 0;
+    private static final boolean IS_NEED_WAITING = ProxyConstants.TYPE_HTTP.equalsIgnoreCase(ProxyConstants.PROPERTY.get(ProxyConstants.PROXY_TYPE));
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws InterruptedException {
         // 直连far端，将数据发送过去
         if (farChannel != null && farChannel.isActive()) {
-            farChannel.writeAndFlush(msg);
+            if (msg instanceof ByteBuf) {
+                ByteBuf data = (ByteBuf) msg;
+                if (IS_NEED_WAITING) {
+                    if (lastLength > 10240) {
+                        Thread.sleep(150L);
+                    }
+                    lastLength = data.readableBytes();
+                }
+                farChannel.writeAndFlush(data);
+            }
         } else {
             if (!ProxyConstants.PROPERTY.containsKey(ProxyConstants.FAR_SERVER_IP) || !ProxyConstants.PROPERTY.containsKey(ProxyConstants.KEY_NAME_PORT)) {
                 LOGGER.error("===Property file has no far server ip or port, please check!");
@@ -50,6 +65,7 @@ public class ConnectFarHandler extends ChannelInboundHandlerAdapter {
                             ChannelPipeline pipeline = ch.pipeline();
                             pipeline.addLast("decrypt", new DecryptHandler());
                             pipeline.addLast("encrypt", new EncryptHandler());
+                            pipeline.addLast("idleEvt", new IdleStateHandler(0, 0, 10));
                             pipeline.addLast("receiveFar", new ReceiveFarHandler(ctx.channel()));
                         }
                     });
@@ -80,5 +96,17 @@ public class ConnectFarHandler extends ChannelInboundHandlerAdapter {
         LOGGER.error("===ConnectFarHandler has caught exception, cause: {}", cause.getMessage());
         NettyUtil.closeOnFlush(farChannel);
         ctx.close();
+    }
+
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+        if (evt instanceof IdleStateEvent) {
+            IdleStateEvent event = (IdleStateEvent) evt;
+            if (event.state() == IdleState.ALL_IDLE) {
+                LOGGER.warn("no data read and write more than 10s, close connection");
+                NettyUtil.closeOnFlush(farChannel);
+                ctx.close();
+            }
+        }
     }
 }

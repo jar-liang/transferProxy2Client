@@ -1,33 +1,41 @@
 package me.jar.handler;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.bytes.ByteArrayDecoder;
 import io.netty.handler.codec.bytes.ByteArrayEncoder;
+import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.CharsetUtil;
-import io.netty.util.concurrent.GlobalEventExecutor;
 import me.jar.constants.ProxyConstants;
 import me.jar.constants.TransferMsgType;
 import me.jar.exception.TransferProxyException;
 import me.jar.message.TransferMsg;
+import me.jar.starter.ServerStarter;
 import me.jar.utils.CommonHandler;
-import me.jar.utils.DecryptHandler;
 import me.jar.utils.LengthContentDecoder;
 import me.jar.utils.PlatformUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @Description
@@ -36,9 +44,10 @@ import java.util.Map;
 public class ConnectProxyHandler extends CommonHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectProxyHandler.class);
     private boolean registerFlag = false;
-    private static final ChannelGroup CHANNELS = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+//    private static final ChannelGroup CHANNELS = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     private Channel clientServerChannel;
     private final ChannelGroup countChannels;
+    private static final Map<String, Channel> CHANNEL_MAP = new ConcurrentHashMap<>();
 
     public ConnectProxyHandler(ChannelGroup countChannels) {
         this.countChannels = countChannels;
@@ -53,14 +62,22 @@ public class ConnectProxyHandler extends CommonHandler {
                 return;
             }
             if (registerFlag) {
+                String id = String.valueOf(transferMsg.getMetaData().get(ProxyConstants.CHANNEL_ID));
                 switch (transferMsg.getType()) {
                     case DISCONNECT:
                         // 关闭连接
-                        CHANNELS.close(channelItem -> channelItem.id().asLongText().equals(transferMsg.getMetaData().get(ProxyConstants.CHANNEL_ID)));
+//                        CHANNELS.close(channelItem -> channelItem.id().asLongText().equals(transferMsg.getMetaData().get(ProxyConstants.CHANNEL_ID)));
+                        CHANNEL_MAP.remove(id);
                         break;
                     case DATA:
                         // 传输数据
-                        CHANNELS.writeAndFlush(transferMsg.getDate(), channelItem -> channelItem.id().asLongText().equals(transferMsg.getMetaData().get(ProxyConstants.CHANNEL_ID)));
+//                        CHANNELS.writeAndFlush(transferMsg.getDate(), channelItem -> channelItem.id().asLongText().equals(transferMsg.getMetaData().get(ProxyConstants.CHANNEL_ID)));
+                        if (CHANNEL_MAP.containsKey(id)) {
+                            Channel channel = CHANNEL_MAP.get(id);
+                            if (channel != null && channel.isActive()) {
+                                channel.writeAndFlush(transferMsg.getDate());
+                            }
+                        }
                         break;
                     case KEEPALIVE:
                         // 心跳包，不处理
@@ -79,47 +96,17 @@ public class ConnectProxyHandler extends CommonHandler {
         retnTransferMsg.setType(TransferMsgType.REGISTER_RESULT);
         Map<String, Object> retnMetaData = new HashMap<>();
         Map<String, Object> metaData = transferMsg.getMetaData();
-        String userFileName;
-        if (PlatformUtil.PLATFORM_CODE == ProxyConstants.WIN_OS) {
-            userFileName = ProxyConstants.USER_FILE_WIN;
-        } else if (PlatformUtil.PLATFORM_CODE == ProxyConstants.LINUX_OS) {
-            userFileName = ProxyConstants.USER_FILE_LINUX;
-        } else {
-            LOGGER.error("error code: 01, server inner error, check user file failed because platform code is wrong: " + PlatformUtil.PLATFORM_CODE);
+        String path = ServerStarter.getUrl().getPath();
+        Map<String, String> userAndPwdMap = new HashMap<>();
+        boolean findUserFile = getUserAndPwdMap(path, userAndPwdMap);
+
+        if (!findUserFile) {
             retnMetaData.put("result", "0");
-            retnMetaData.put("reason", "server inner error: 01, contact the admin!");
+            retnMetaData.put("reason", "server inner error, contact the admin!");
             sendBackMsgAndDealResult(retnTransferMsg, retnMetaData);
             return;
         }
 
-        Map<String, String> userAndPwdMap = new HashMap<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(userFileName), CharsetUtil.UTF_8))) {
-            while (true) {
-                String line = reader.readLine();
-                if (line == null) {
-                    break;
-                }
-                if (line.length() == 0) {
-                    continue;
-                }
-                String[] split = line.split("\\|");
-                if (split.length == 2) {
-                    String userName = split[0];
-                    String pwd = split[1];
-                    if (userName != null && userName.length() > 0
-                            && pwd != null && pwd.length() > 0) {
-                        userAndPwdMap.put(userName.trim(), pwd.trim());
-                    }
-                }
-            }
-        } catch (IOException e) {
-            // 打印日志提示，读取配置文件失败
-            LOGGER.error("error code: 02, reading user file failed，please check!", e);
-            retnMetaData.put("result", "0");
-            retnMetaData.put("reason", "server inner error: 02, contact the admin!");
-            sendBackMsgAndDealResult(retnTransferMsg, retnMetaData);
-            return;
-        }
         String userNameRegister = String.valueOf(metaData.get("userName"));
         boolean isLegal = false;
         if (userAndPwdMap.containsKey(userNameRegister) && userAndPwdMap.get(userNameRegister).equals(metaData.get("password"))) {
@@ -145,8 +132,10 @@ public class ConnectProxyHandler extends CommonHandler {
                         pipeline.addLast("lengthField", new LengthContentDecoder());
                         pipeline.addLast("byteArrayEncoder", new ByteArrayEncoder());
                         pipeline.addLast("byteArrayDecoder", new ByteArrayDecoder());
-                        pipeline.addLast("connectClient", new ConnectClientHandler(channel));
-                        CHANNELS.add(ch);
+                        pipeline.addLast("idleEvt", new IdleStateHandler(0, 0, 10));
+                        pipeline.addLast("connectClient", new ConnectClientHandler(channel, CHANNEL_MAP));
+//                        CHANNELS.add(ch);
+                        CHANNEL_MAP.put(ch.id().asLongText(), ch);
                     }
                 };
 
@@ -175,6 +164,69 @@ public class ConnectProxyHandler extends CommonHandler {
             }
         }
         sendBackMsgAndDealResult(retnTransferMsg, retnMetaData);
+    }
+
+    private boolean getUserAndPwdMap(String path, Map<String, String> userAndPwdMap) {
+        boolean findUserFile = true;
+        if (path.contains(".jar")) {
+            String tempPath = null;
+            if (PlatformUtil.PLATFORM_CODE == ProxyConstants.WIN_OS) {
+                tempPath = path.substring(path.indexOf("/") + 1, path.indexOf(".jar"));
+            } else if (PlatformUtil.PLATFORM_CODE == ProxyConstants.LINUX_OS) {
+                tempPath = path.substring(path.indexOf("/"), path.indexOf(".jar"));
+            } else {
+                // 打印日志提示，不支持的系统
+                LOGGER.warn("===Unsupported System!");
+                findUserFile = false;
+            }
+            if (tempPath != null) {
+                String targetDirPath = tempPath.substring(0, tempPath.lastIndexOf("/") + 1);
+                File file = new File(targetDirPath);
+                if (file.exists() && file.isDirectory()) {
+                    File[] properties = file.listFiles(pathname -> pathname.getName().contains("user"));
+                    if (properties == null || properties.length != 1) {
+                        LOGGER.error("jar file directory should be only one property file! please check");
+                        findUserFile = false;
+                    } else {
+                        File property = properties[0];
+                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(property), CharsetUtil.UTF_8))) {
+                            while (true) {
+                                String line = reader.readLine();
+                                if (line == null) {
+                                    break;
+                                }
+                                if (line.length() == 0) {
+                                    continue;
+                                }
+                                String[] split = line.split("\\|");
+                                if (split.length == 2) {
+                                    String userName = split[0];
+                                    String pwd = split[1];
+                                    if (userName != null && userName.length() > 0
+                                            && pwd != null && pwd.length() > 0) {
+                                        userAndPwdMap.put(userName.trim(), pwd.trim());
+                                    }
+                                }
+                            }
+                            if (userAndPwdMap.isEmpty()) {
+                                LOGGER.error("read user file, but no data! please check!");
+                                findUserFile = false;
+                            }
+                        } catch (IOException e) {
+                            // 打印日志提示，读取配置文件失败
+                            LOGGER.error("error code: 02, reading user file failed，please check!", e);
+                            findUserFile = false;
+                        }
+                    }
+                } else {
+                    LOGGER.error("get jar file directory failed! please check!");
+                }
+            }
+        } else {
+            LOGGER.error("path not contain '.jar' string! please check!");
+            findUserFile = false;
+        }
+        return findUserFile;
     }
 
     private void sendBackMsgAndDealResult(TransferMsg retnTransferMsg, Map<String, Object> retnMetaData) {

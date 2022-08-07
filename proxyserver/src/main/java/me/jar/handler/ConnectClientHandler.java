@@ -3,9 +3,12 @@ package me.jar.handler;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
 import me.jar.constants.ProxyConstants;
 import me.jar.constants.TransferMsgType;
 import me.jar.message.TransferMsg;
+import me.jar.utils.NettyUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,10 +22,12 @@ import java.util.Map;
  */
 public class ConnectClientHandler extends ChannelInboundHandlerAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectClientHandler.class);
-    private Channel proxyServer;
+    private final Channel proxyServer;
+    private final Map<String, Channel> channelMap;
 
-    public ConnectClientHandler(Channel proxyServer) {
+    public ConnectClientHandler(Channel proxyServer, Map<String, Channel> channelMap) {
         this.proxyServer = proxyServer;
+        this.channelMap = channelMap;
     }
 
     @Override
@@ -59,10 +64,12 @@ public class ConnectClientHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
+        String id = ctx.channel().id().asLongText();
+        channelMap.remove(id);
         TransferMsg transferMsg = new TransferMsg();
         transferMsg.setType(TransferMsgType.DISCONNECT);
         Map<String, Object> metaData = new HashMap<>(1);
-        metaData.put(ProxyConstants.CHANNEL_ID, ctx.channel().id().asLongText());
+        metaData.put(ProxyConstants.CHANNEL_ID, id);
         transferMsg.setMetaData(metaData);
         proxyServer.writeAndFlush(transferMsg);
     }
@@ -71,5 +78,17 @@ public class ConnectClientHandler extends ChannelInboundHandlerAdapter {
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         LOGGER.error("===server2Client caught exception. channel:" + ctx.channel().toString() + ". cause: " + cause.getMessage());
         ctx.close();
+    }
+
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+        if (evt instanceof IdleStateEvent) {
+            IdleStateEvent event = (IdleStateEvent) evt;
+            if (event.state() == IdleState.ALL_IDLE) {
+                LOGGER.warn("no data read and write more than 10s, close connection");
+                channelMap.remove(ctx.channel().id().asLongText());
+                NettyUtil.closeOnFlush(ctx.channel());
+            }
+        }
     }
 }

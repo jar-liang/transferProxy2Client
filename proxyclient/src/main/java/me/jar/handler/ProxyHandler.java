@@ -1,13 +1,19 @@
 package me.jar.handler;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.bytes.ByteArrayDecoder;
 import io.netty.handler.codec.bytes.ByteArrayEncoder;
+import io.netty.handler.timeout.IdleStateHandler;
 import me.jar.constants.ProxyConstants;
 import me.jar.constants.TransferMsgType;
 import me.jar.exception.TransferProxyException;
@@ -19,7 +25,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,7 +36,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ProxyHandler extends CommonHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProxyHandler.class);
     private static final Map<String, Channel> CHANNEL_MAP = new ConcurrentHashMap<>();
-    private String password;
+    private final String password;
+    private String proxyType;
 
     public ProxyHandler() {
         String password = ProxyConstants.PROPERTY.get(ProxyConstants.PROPERTY_NAME_KEY);
@@ -61,11 +67,7 @@ public class ProxyHandler extends CommonHandler {
 //                    connectTarget(ctx, msg, metaData);
 //                    break;
                 case DISCONNECT:
-                    Channel channel = CHANNEL_MAP.get(channelId);
-                    if (channel != null) {
-                        channel.close();
-                        CHANNEL_MAP.remove(channelId);
-                    }
+                    CHANNEL_MAP.remove(channelId);
                     break;
                 case DATA:
                     Channel channelData = CHANNEL_MAP.get(channelId);
@@ -116,7 +118,10 @@ public class ProxyHandler extends CommonHandler {
                 ChannelPipeline pipeline = ch.pipeline();
                 pipeline.addLast("byteArrayDecoder", new ByteArrayDecoder());
                 pipeline.addLast("byteArrayEncoder", new ByteArrayEncoder());
-                pipeline.addLast("clientHandler", new ClientHandler(ctx.channel(), channelId));
+                int idleTime = !ProxyConstants.TYPE_TCP.equalsIgnoreCase(proxyType) ? 60 : 10;
+                LOGGER.info("idle time: " + idleTime);
+                pipeline.addLast("idleEvt", new IdleStateHandler(0, 0, idleTime));
+                pipeline.addLast("clientHandler", new ClientHandler(ctx.channel(), channelId, CHANNEL_MAP, idleTime));
                 CHANNEL_MAP.put(channelId, ch);
             }
         });
@@ -150,16 +155,23 @@ public class ProxyHandler extends CommonHandler {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
-        LOGGER.info("start to register to server agent...");
+        String proxyType = ProxyConstants.PROPERTY.get(ProxyConstants.PROXY_TYPE);
+        if (!ProxyConstants.TYPE_HTTP.equalsIgnoreCase(proxyType) && !ProxyConstants.TYPE_TCP.equalsIgnoreCase(proxyType)) {
+            LOGGER.error("proxy type now can only be HTTP or TCP! please check property.");
+            return;
+        }
+        this.proxyType = proxyType;
+        LOGGER.info("proxy type: " + proxyType + ", start to register to server agent...");
         TransferMsg transferMsg = new TransferMsg();
         transferMsg.setType(TransferMsgType.REGISTER);
-        Map<String, Object> metaData = new HashMap<>(3);
+        Map<String, Object> metaData = new HashMap<>(4);
         String userName = ProxyConstants.PROPERTY.get(ProxyConstants.USER_NAME);
         metaData.put("userName", userName);
         String password = ProxyConstants.PROPERTY.get(ProxyConstants.USER_PASSWORD);
         metaData.put("password", password);
         String server2ClientPort = ProxyConstants.PROPERTY.get(ProxyConstants.SERVER_CLIENT_PORT);
         metaData.put("port", server2ClientPort);
+        metaData.put("proxyType", proxyType);
         transferMsg.setMetaData(metaData);
         ctx.writeAndFlush(transferMsg);
         super.channelActive(ctx);

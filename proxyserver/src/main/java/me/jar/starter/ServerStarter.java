@@ -13,10 +13,13 @@ import me.jar.handler.ConnectProxyHandler;
 import me.jar.utils.Byte2TransferMsgDecoder;
 import me.jar.utils.LengthContentDecoder;
 import me.jar.utils.NettyUtil;
+import me.jar.utils.PlatformUtil;
 import me.jar.utils.TransferMsg2ByteEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URL;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -25,12 +28,37 @@ import java.util.TimerTask;
  * @Date 2021/4/23-23:45
  */
 public class ServerStarter {
+    static {
+        String path = ServerStarter.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+        if (path.contains(".jar")) {
+            String osName = System.getProperty("os.name");
+            String tempPath;
+            if (osName.contains("Windows")) {
+                tempPath = path.substring(path.indexOf("/") + 1, path.indexOf(".jar"));
+            } else {
+                tempPath = path.substring(path.indexOf("/"), path.indexOf(".jar"));
+            }
+            String targetDirPath = tempPath.substring(0, tempPath.lastIndexOf("/"));
+            System.out.println("target path: " + targetDirPath);
+            System.setProperty("WORKDIR", targetDirPath);
+        } else {
+            System.out.println("current path not contain .jar file");
+            System.exit(1);
+        }
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerStarter.class);
     private static final ChannelGroup CHANNELS = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    private static final URL URL = ServerStarter.class.getProtectionDomain().getCodeSource().getLocation();
 
     public static void main(String[] args) {
         recordServer2ClientPortAtFixedRate(5000L, 60000L);
 
+        Map<String, String> propertyMap = PlatformUtil.parseProperty2Map(URL);
+        if (!propertyMap.isEmpty()) {
+            ProxyConstants.PROPERTY.clear();
+            ProxyConstants.PROPERTY.putAll(propertyMap);
+        }
         if (ProxyConstants.PROPERTY.containsKey(ProxyConstants.SERVER_LISTEN_PORT)) {
             String port = ProxyConstants.PROPERTY.get(ProxyConstants.SERVER_LISTEN_PORT);
             try {
@@ -87,5 +115,9 @@ public class ServerStarter {
         };
 
         new Timer().schedule(timerTask, delay, period);
+    }
+
+    public static URL getUrl() {
+        return URL;
     }
 }

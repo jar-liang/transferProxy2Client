@@ -28,6 +28,25 @@ import java.util.Map;
  * @Date 2021/4/27-21:31
  */
 public class ClientServer {
+    static {
+        String path = ClientServer.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+        if (path.contains(".jar")) {
+            String osName = System.getProperty("os.name");
+            String tempPath;
+            if (osName.contains("Windows")) {
+                tempPath = path.substring(path.indexOf("/") + 1, path.indexOf(".jar"));
+            } else {
+                tempPath = path.substring(path.indexOf("/"), path.indexOf(".jar"));
+            }
+            String targetDirPath = tempPath.substring(0, tempPath.lastIndexOf("/"));
+            System.out.println("target path: " + targetDirPath);
+            System.setProperty("WORKDIR", targetDirPath);
+        } else {
+            System.out.println("current path not contain .jar file");
+            System.exit(1);
+        }
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ClientServer.class);
 
     public static void connectProxyServer() throws InterruptedException {

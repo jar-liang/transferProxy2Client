@@ -41,7 +41,7 @@ public class ReceiveFarHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        LOGGER.error("===ReceiveRemoteHandler caught exception, cause: {}", cause.getMessage() + ". host: " + ctx.channel().remoteAddress().toString());
+        LOGGER.error("===ReceiveFarHandler caught exception, cause: {}", cause.getMessage() + ". host: " + ctx.channel().remoteAddress().toString());
         NettyUtil.closeOnFlush(clientChannel);
         ctx.close();
     }

@@ -58,4 +58,10 @@ public interface ProxyConstants {
     String USER_NAME = "user.name";
 
     String USER_PASSWORD = "user.password";
+
+    String PROXY_TYPE = "proxy.type";
+
+    String TYPE_HTTP = "HTTP";
+
+    String TYPE_TCP = "TCP";
 }
